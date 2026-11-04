@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriTech | Suplementos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="chatbot.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="logo" aria-label="NutriTech logo">
+            <div class="logo-mark">
+                <img src="images/logo.img (2).jpeg" alt="Logo NutriTech">
+            </div>
+        </div>
+        <div class="search-bar desktop">
+            <input type="text" placeholder="Pesquisar produtos...">
+            <button aria-label="Buscar">Buscar</button>
+        </div>
+        <nav>
+            <ul class="nav-links" id="navLinks">
+                <li class="search-bar mobile">
+                    <input type="text" placeholder="Pesquisar...">
+                    <button aria-label="Buscar">Buscar</button>
+                </li>
+                <li class="nav-icon-item">
+                    <button class="cart-btn" aria-label="Carrinho de compras">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 4h2l2.2 9.2a1 1 0 0 0 1 .8H17a1 1 0 0 0 1-.8L20 7H7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="10" cy="18" r="1.5" fill="currentColor"/>
+                            <circle cx="17" cy="18" r="1.5" fill="currentColor"/>
+                        </svg>
+                    </button>
+                </li>
+                <li><a href="#inicio">Início</a></li>
+                <li><a href="#snacks">Snacks</a></li>
+                <li><a href="#roupas">Performance</a></li>
+                <li><a href="#sobre">A Marca</a></li>
+                <li><a href="#produtos">Produtos</a></li>
+                <li><a href="#contato">Contato</a></li>
+                <li><button class="location-btn" id="locationBtn">Localização</button></li>
+                <li><button class="theme-toggle" id="themeToggle" aria-label="Alternar tema">☀️</button></li>
+            </ul>
+            <div class="hamburger" id="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="inicio" class="hero" aria-label="Banner principal">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide slide-1"></div>
+                <div class="hero-slide slide-2"></div>
+                <div class="hero-slide slide-3"></div>
+            </div>
+            <div class="hero-content">
+                <span class="hero-kicker">Coleção premium</span>
+                <h2>Performance premium para o seu melhor treino.</h2>
+                <p>Suplementos e hábitos de alto padrão para quem busca potência, foco e consistência no cotidiano.</p>
+                <div class="hero-actions">
+                    <a href="#produtos" class="btn-primary">Explorar coleção</a>
+                    <a href="#sobre" class="btn-secondary">Nossa história</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="produtos">
+            <h2 class="section-title">Essenciais da Coleção</h2>
+            <div class="benefits-strip">
+                <div class="benefit-item benefit-item-1">
+                    <img class="benefit-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%230af0c6'/%3E%3Cstop offset='1' stop-color='%230d7f77'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' rx='30' fill='%2306121a'/%3E%3Crect x='30' y='80' width='112' height='52' rx='10' fill='url(%23g)'/%3E%3Crect x='55' y='52' width='56' height='34' rx='8' fill='%2309d4b4'/%3E%3Crect x='142' y='92' width='28' height='20' rx='6' fill='%2315242d'/%3E%3Crect x='145' y='118' width='22' height='18' rx='6' fill='%2315242d'/%3E%3Cpath d='M70 118h38v12H70zm10 18h50v10H80z' fill='%230c1a28'/%3E%3Ccircle cx='62' cy='136' r='16' fill='%2315242d'/%3E%3Ccircle cx='128' cy='136' r='16' fill='%2315242d'/%3E%3Ccircle cx='62' cy='136' r='7' fill='%230af0c6'/%3E%3Ccircle cx='128' cy='136' r='7' fill='%230af0c6'/%3E%3C/svg%3E" alt="Frete grátis">
+                    <span>Entrega rápida para todo o Brasil</span>
+                </div>
+                <div class="benefit-item benefit-item-2">
+                    <img class="benefit-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='30' fill='%2306121a'/%3E%3Ccircle cx='100' cy='100' r='66' fill='%230af0c6' fill-opacity='.12'/%3E%3Cpath d='M76 55v88c0 11 9 20 20 20h28c11 0 20-9 20-20V55H76zm22 18h26v16H98zm0 34h26v16H98z' fill='%230af0c6'/%3E%3Cpath d='M122 120l18 18 28-38' fill='none' stroke='%23ffffff' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" alt="Desconto no Pix">
+                    <span>10% de desconto em pagamentos via Pix</span>
+                </div>
+                <div class="benefit-item benefit-item-3">
+                    <img class="benefit-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='32' fill='%2306121a'/%3E%3Crect x='26' y='54' width='148' height='98' rx='18' fill='%230af0c6' fill-opacity='.12' stroke='%230af0c6' stroke-width='5'/%3E%3Crect x='38' y='72' width='124' height='24' rx='8' fill='%230af0c6' fill-opacity='.2'/%3E%3Crect x='42' y='106' width='48' height='28' rx='7' fill='%230af0c6'/%3E%3Crect x='98' y='106' width='18' height='18' rx='4' fill='%230af0c6'/%3E%3Crect x='122' y='106' width='18' height='18' rx='4' fill='%230af0c6'/%3E%3Ccircle cx='60' cy='146' r='12' fill='%230d7f77'/%3E%3Ccircle cx='140' cy='146' r='12' fill='%230d7f77'/%3E%3C/svg%3E" alt="Parcelamento sem juros">
+                    <span>Até 6x sem juros com cartão</span>
+                </div>
+            </div>
+            <div class="cards-container">
+                <div class="card">
+                    <img src="images/wheyprotein.img.jpeg" alt="Whey Protein">
+                    <div class="card-content">
+                        <h3>Whey Protein 100%</h3>
+                        <p>Proteína de alta pureza para força, recuperação e definição muscular.</p>
+                        <div class="price">R$ 149,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/creatina.img.jpeg" alt="Creatina">
+                    <div class="card-content">
+                        <h3>Creatina Pura</h3>
+                        <p>Potência e performance para treinos mais intensos e consistentes.</p>
+                        <div class="price">R$ 99,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/preworkout.img.jpeg" alt="Pré-Treino">
+                    <div class="card-content">
+                        <h3>Pré-Treino</h3>
+                        <p>Energia, foco e disposição para evoluir em cada sessão.</p>
+                        <div class="price">R$ 129,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/multivitaminico.img.jpeg" alt="Vitaminas">
+                    <div class="card-content">
+                        <h3>Multivitamínico</h3>
+                        <p>Suporte diário para energia, bem-estar e rotina mais equilibrada.</p>
+                        <div class="price">R$ 79,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="snacks">
+            <h2 class="section-title">Snacks Premium</h2>
+            <div class="cards-container">
+                <div class="card">
+                    <img src="images/barra de cereal banana com canela.img.jpg" alt="Barra de cereal banana com canela">
+                    <div class="card-content">
+                        <h3>Barra Banana com Canela</h3>
+                        <p>Uma opção leve, sofisticada e prática para acompanhar o dia.</p>
+                        <div class="price">R$ 19,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/barra de cereal chocolate com amendoim.img.jpg" alt="Barra de cereal chocolate com amendoim">
+                    <div class="card-content">
+                        <h3>Barra Chocolate com Amendoim</h3>
+                        <p>Proteína e sabor em uma combinação que eleva o lanche.</p>
+                        <div class="price">R$ 22,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/Barra de cereal morango e chocolate branco.img.jpg" alt="Barra de cereal morango e chocolate branco">
+                    <div class="card-content">
+                        <h3>Barra Morango e Chocolate Branco</h3>
+                        <p>Uma proposta doce e equilibrada com textura premium.</p>
+                        <div class="price">R$ 24,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/bebida lactea morango.img.jpg" alt="Bebida láctea de morango">
+                    <div class="card-content">
+                        <h3>Bebida Láctea de Morango</h3>
+                        <p>Prática, saborosa e ideal para reforçar energia entre refeições.</p>
+                        <div class="price">R$ 18,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/bebida lactea baunilha.img.jpg" alt="Bebida láctea de baunilha">
+                    <div class="card-content">
+                        <h3>Bebida Láctea de Baunilha</h3>
+                        <p>Leve, cremosa e delicada para um lanche saboroso com mais conforto.</p>
+                        <div class="price">R$ 18,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/bebida lactea chocolate.img.jpg" alt="Bebida láctea de chocolate">
+                    <div class="card-content">
+                        <h3>Bebida Láctea de Chocolate</h3>
+                        <p>Uma bebida sofisticada, nutritiva e perfeita para manter o ritmo.</p>
+                        <div class="price">R$ 18,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="roupas">
+            <h2 class="section-title">Coleção Performance</h2>
+            <div class="cards-container">
+                <div class="card">
+                    <img src="images/camisa de academia.img.jpg" alt="Camisa de academia">
+                    <div class="card-content">
+                        <h3>Camisa de Academia</h3>
+                        <p>Leve, confortável e pensada para treinos com alto desempenho.</p>
+                        <div class="price">R$ 89,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/calça de academia.img.jpg" alt="Calça de academia">
+                    <div class="card-content">
+                        <h3>Calça de Academia</h3>
+                        <p>Conforto, mobilidade e acabamento refinado para a rotina ativa.</p>
+                        <div class="price">R$ 119,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="images/top feminino.img.jpg" alt="Top feminino de academia">
+                    <div class="card-content">
+                        <h3>Top Feminino</h3>
+                        <p>Design moderno, ajuste preciso e presença premium no treino.</p>
+                        <div class="price">R$ 79,90</div>
+                        <button class="btn-buy">Comprar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sobre">
+            <h2 class="section-title">Nossa História: Nutrilab</h2>
+            <div class="sobre-grid">
+                <div class="sobre-image-box">
+                    <img src="images/Nutritechlab.img.jpeg" alt="Laboratório Nutrilab">
+                </div>
+                <div class="sobre-content">
+                    <p style="margin-bottom: 15px;">A <strong>Nutrilab</strong> nasceu da ideia de elevar o padrão da performance: com pesquisa, rigor técnico e atenção à qualidade, criamos soluções pensadas para quem busca resultados consistentes e bem-estar em todos os dias.</p>
+                    <p>Com o tempo, essa experiência se transformou na <strong>NutriTech</strong>, uma plataforma que reúne ciência, design e praticidade para entregar uma rotina mais inteligente, sofisticada e alinhada ao seu estilo de vida.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="contato">
+            <h2 class="section-title">Fale com a gente</h2>
+            <form class="contato-form" id="contactForm">
+                <input type="text" placeholder="Seu nome" required>
+                <input type="email" placeholder="Seu e-mail" required>
+                <textarea placeholder="Como podemos ajudar?" rows="5" required></textarea>
+                <button type="submit" class="btn-primary">Enviar mensagem</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4>NutriTech</h4>
+                <ul>
+                    <li><a href="#inicio">Início</a></li>
+                    <li><a href="#sobre">Sobre Nós</a></li>
+                    <li><a href="#produtos">Produtos</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Atendimento</h4>
+                <ul>
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Entrega</a></li>
+                    <li><a href="#">Trocas e devoluções</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Redes sociais</h4>
+                <ul>
+                    <li><a href="#">Instagram</a></li>
+                    <li><a href="#">YouTube</a></li>
+                    <li><a href="#">TikTok</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 Nutrilab & NutriTech. Todos os direitos reservados.
+        </div>
+    </footer>
+
+    <div id="chatbot" class="chatbot-container" aria-live="polite">
+        <div class="chatbot-header">
+            <span>Nutri • Assistente NutriTech</span>
+            <button id="closeChat" aria-label="Fechar chat">×</button>
+        </div>
+        <div class="chatbot-messages" id="chatMessages"></div>
+        <div class="chatbot-input">
+            <input type="text" id="chatInput" placeholder="Digite sua dúvida..." aria-label="Mensagem do chatbot">
+            <button id="sendChat" type="button">Enviar</button>
+        </div>
+    </div>
+    <button id="openChat" class="open-chat-btn" aria-label="Abrir chat do Nutri">
+        <img src="images/BotMax.img.jpeg" alt="Bot Max">
+    </button>
+
+    <script src="script.js"></script>
+    <script src="config.js"></script>
+    <script src="chatbot.js"></script>
+</body>
+</html>
