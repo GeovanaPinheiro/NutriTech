@@ -6,9 +6,9 @@ Landing page moderna da NutriTech com visual premium, responsivo e foco em conve
 
 ## Stack tecnológica
 
-- HTML5
-- CSS3
-- JavaScript Vanilla
+- HTML
+- CSS
+- JavaScript
 - API do Google Gemini para o assistente virtual
 
 ## Estrutura do projeto
