@@ -1,4 +1,4 @@
-const GEMINI_MODEL = "gemini-3.5-flash-lite";
+const GEMINI_MODEL = "gemini-3.8-flash";
 
 
 const getProductFacts = () => {
@@ -41,7 +41,7 @@ const buildSystemPrompt = () => {
     const facts = getProductFacts();
 
     return `
-Você é o Nutri, assistente virtual oficial da NutriTech.
+Você é o Max, assistente virtual oficial da NutriTech.
 
 Personalidade:
 - Simpática, motivadora, objetiva e acessível.
@@ -123,7 +123,7 @@ const setTypingState = (typing) => {
 
 const showWelcome = () => {
     if (welcomeShown) return;
-    appendMessage('bot', 'Olá! Sou o Nutri, seu assistente da NutriTech. Posso te ajudar a encontrar suplementos, snacks e produtos para performance no site.');
+    appendMessage('bot', 'Olá! Sou o Max, seu assistente da NutriTech. Posso te ajudar a encontrar suplementos, snacks e produtos para performance no site.');
     welcomeShown = true;
 };
 
@@ -162,33 +162,62 @@ const sendToGemini = async () => {
     setTypingState(true);
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': GEMINI_API_KEY
-            },
-            body: JSON.stringify({
-                system_instruction: {
-                    parts: [{ text: buildSystemPrompt() }]
-                },
-                contents: history,
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 300
-                }
-            })
-        });
+        let lastError = null;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        system_instruction: {
+                            parts: [{ text: buildSystemPrompt() }]
+                        },
+                        contents: history,
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 800
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    const shouldRetry = response.status === 503 || errorText.includes('UNAVAILABLE');
+
+                    if (shouldRetry && attempt === 1) {
+                        await new Promise((resolve) => setTimeout(resolve, 3000));
+                        continue;
+                    }
+
+                    throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                const botReply = data?.candidates
+                    ?.flatMap((candidate) => candidate?.content?.parts || [])
+                    .map((part) => part?.text || '')
+                    .join('')
+                    .trim() || 'Não consegui montar uma resposta agora. Tente novamente em instantes.';
+                history.push({ role: 'model', parts: [{ text: botReply }] });
+                appendMessage('bot', botReply);
+                return;
+            } catch (error) {
+                lastError = error;
+                if (attempt === 1) {
+                    const message = String(error?.message || error || '');
+                    if (message.includes('503') || message.includes('UNAVAILABLE')) {
+                        await new Promise((resolve) => setTimeout(resolve, 3000));
+                        continue;
+                    }
+                }
+                throw error;
+            }
         }
 
-        const data = await response.json();
-        const botReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Não consegui montar uma resposta agora. Tente novamente em instantes.';
-        history.push({ role: 'model', parts: [{ text: botReply }] });
-        appendMessage('bot', botReply.trim());
+        throw lastError || new Error('Erro na API do Gemini');
     } catch (error) {
         console.error('Erro do chatbot:', error);
         appendMessage('bot', 'Não consegui responder no momento. Tente novamente em instantes ou use o contato da loja para falar com o atendimento.');
