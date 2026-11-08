@@ -1,61 +1,85 @@
-# NutriTech
+NutriTech 🚀
 
-## Descrição do projeto
+Landing page moderna, responsiva e de alto padrão desenvolvida para o ecossistema NutriTech & Nutrilab, unindo suplementos premium, snacks saudáveis, vestuário de performance e um assistente virtual inteligente integrado com IA.
 
-Landing page moderna da NutriTech com visual premium, responsivo e foco em conversão. O projeto apresenta catálogo de suplementos, seção sobre a marca, contato e chatbot para auxiliar clientes com dúvidas de navegação e produtos.
+✨ Funcionalidades Principais
 
-## Stack tecnológica
+Visual Exclusivo e Responsivo (Dark/Light Mode): Interface otimizada para computadores, tablets e dispositivos móveis com transição de tema fluida.
 
-- HTML
-- CSS
-- JavaScript
-- API do Google Gemini para o assistente virtual
+Catálogo Organizado: Seções dedicadas a essenciais da coleção, snacks e vestuário de performance com preços e cartões interativos.
 
-## Estrutura do projeto
+Assistente Virtual (Max): Chatbot flutuante inteligente alimentado pela API do Google Gemini para tirar dúvidas de navegação, produtos e orientar clientes.
 
-- `index.html` — estrutura da página principal
-- `style.css` — estilos visuais do site
-- `script.js` — interações da interface (tema, menu, geolocalização, formulário)
-- `chatbot.js` — lógica do chatbot
-- `chatbot.css` — estilos do chat
-- `config.js` — arquivo de configuração da API do Gemini
-- `api/chat.js` — endpoint de integração do chatbot
-- `images/` — imagens e assets do projeto
+Geolocalização Dinâmica: Botão interativo para identificar a região do visitante em tempo real.
 
-## Como executar
+Experiência Otimizada: Imagens organizadas na pasta de assets images/ com carregamento rápido e design voltado para conversão.
 
-Como o projeto é uma aplicação estática, basta abrir o arquivo `index.html` em um navegador.
+📂 Estrutura do Projeto
 
-Se preferir rodar via servidor local:
+O repositório está organizado da seguinte forma:
 
-```bash
-cd "C:\Users\Pinhe\OneDrive\Documentos\NutriTech Project"
+NutriTech/
+│
+├── index.html          # Página principal da landing page
+├── style.css           # Estilos visuais completos (com suporte a dark/light mode)
+├── script.js           # Lógica de interações (tema, menu mobile, geolocalização, formulário)
+├── chatbot.js          # Lógica de funcionamento e contexto do assistente virtual Max
+├── chatbot.css         # Estilos isolados do chatbot
+├── config.js           # Chave de configuração da API do Gemini
+├── .gitignore          # Arquivos ignorados pelo controle de versão
+└── images/             # Pasta contendo todas as imagens e assets do projeto
+    ├── logo.img (2).jpeg
+    ├── wheyprotein.img.jpeg
+    ├── creatina.img.jpeg
+    ├── preworkout.img.jpeg
+    ├── multivitaminico.img.jpeg
+    ├── BotMax.img.jpeg
+    ├── Nutritechlab.img.jpeg
+    ├── barra de cereal banana com canela.img.jpg
+    ├── barra de cereal chocolate com amendoim.img.jpg
+    ├── Barra de cereal morango e chocolate branco.img.jpg
+    ├── bebida lactea morango.img.jpg
+    ├── bebida lactea baunilha.img.jpg
+    ├── bebida lactea chocolate.img.jpg
+    ├── camisa de academia.img.jpg
+    ├── calça de academia.img.jpg
+    └── top feminino.img.jpg
+
+
+🛠️ Tecnologias Utilizadas
+
+HTML5 Semantic — Estrutura da aplicação web
+
+CSS3 Moderno — Flexbox, Grid, Variáveis CSS e animações personalizadas
+
+JavaScript (Vanilla) — Dinamismo e interações da interface
+
+Google Gemini API — Inteligência artificial por trás do assistente virtual Max
+
+⚙️ Como Executar o Projeto
+
+Como se trata de uma aplicação web estática, podes abrir o projeto de forma muito simples:
+
+Diretamente no navegador: Clica duas vezes no ficheiro index.html.
+
+Via Servidor Local (Recomendado para testar o chatbot e scripts):
+Abre o terminal na pasta do projeto e executa o servidor local:
+
 python -m http.server 8000
-```
 
-Depois acesse:
 
-```text
+Em seguida, abre no teu navegador:
+
 http://localhost:8000
-```
 
-## Configuração do chatbot
 
-Antes de usar o chatbot, configure sua chave da API do Gemini no arquivo `config.js`.
+🔑 Configuração do Chatbot (Max)
 
-```js
+Para que o assistente virtual responda às perguntas dos visitantes utilizando a inteligência artificial do Gemini, insere a tua chave de API no arquivo config.js:
+
 const GEMINI_API_KEY = "SUA_CHAVE_AQUI";
-```
 
-## Funcionalidades principais
 
-- Landing page premium para marca de suplementos
-- Catálogo com produtos e preços
-- Navegação por seções da loja
-- Experiência mobile-first
-- Chatbot com respostas em português
-- Design visual alinhado ao mercado fitness
+📄 Licença
 
-## Observações
-
-Este projeto foi desenvolvido como uma página comercial estática com foco em apresentação e conversão, podendo ser expandido com back-end, admin de produtos, autenticação e integração com checkout real.
+Desenvolvido por Geovana Pinheiro e Mateus Sampaio para o projeto NutriTech. Todos os direitos reservados.
