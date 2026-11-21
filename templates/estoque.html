@@ -1,0 +1,347 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque | NUTRITECH</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f5f7;
+            color: #222;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        header {
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: #666;
+        }
+
+        .resumo {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            flex: 1;
+            min-width: 180px;
+            box-shadow: 0 2px 8px #00000010;
+        }
+
+        .card span {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .card h2 {
+            margin-top: 8px;
+            font-size: 25px;
+        }
+
+        .formulario-container,
+        .tabela-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            overflow-x: auto;
+        }
+
+        .formulario-container h2,
+        .tabela-container h2 {
+            margin-bottom: 15px;
+        }
+
+        #formProduto {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #formProduto input {
+            flex: 1;
+            min-width: 180px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 6px;
+            background: #222;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f8f8;
+        }
+
+        #mensagem,
+        #mensagemCadastro {
+            margin-top: 15px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <header>
+            <h1>NUTRITECH | Controle de Estoque</h1>
+            <p>Consulta de produtos e quantidades cadastradas no sistema.</p>
+        </header>
+
+        <section class="resumo">
+            <div class="card">
+                <span>Total de produtos</span>
+                <h2 id="totalProdutos">0</h2>
+            </div>
+
+            <div class="card">
+                <span>Unidades em estoque</span>
+                <h2 id="totalEstoque">0</h2>
+            </div>
+        </section>
+
+        <section class="formulario-container">
+            <h2>Cadastrar novo produto</h2>
+
+            <form id="formProduto">
+                <input type="text" id="nome" placeholder="Nome do produto" required>
+
+                <input type="text" id="categoria" placeholder="Categoria" required>
+
+                <input type="text" id="descricao" placeholder="Descrição">
+
+                <input type="number" id="preco" placeholder="Preço" step="0.01" min="0" required>
+
+                <button type="submit">Cadastrar produto</button>
+            </form>
+
+            <p id="mensagemCadastro"></p>
+        </section>
+
+        <section class="tabela-container">
+            <h2>Produtos cadastrados</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>Preço</th>
+                        <th>Quantidade</th><th>Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody id="listaProdutos"></tbody>
+            </table>
+
+            <p id="mensagem">Carregando produtos...</p>
+        </section>
+
+    </div>
+
+    <script>
+
+        let produtosAtuais = [];
+
+        async function carregarProdutos() {
+            const lista = document.getElementById("listaProdutos");
+            const mensagem = document.getElementById("mensagem");
+
+            try {
+                const resposta = await fetch("/api/produtos");
+
+                if (!resposta.ok) {
+                    throw new Error("Erro ao buscar produtos.");
+                }
+
+                const produtos = await resposta.json();
+                produtosAtuais = produtos;
+
+                lista.innerHTML = "";
+
+                let unidades = 0;
+
+                produtos.forEach(produto => {
+                    unidades += produto.estoque;
+
+                    lista.innerHTML += `
+                        <tr>
+                            <td>${produto.id}</td>
+                            <td>${produto.nome}</td>
+                            <td>${produto.categoria}</td>
+                            <td>R$ ${produto.preco.toFixed(2).replace(".", ",")}</td>
+                            <td>${produto.estoque} unidades</td>
+<td>
+    <button onclick="editarProduto(${produto.id})">Editar</button>
+    <button onclick="excluirProduto(${produto.id})">Excluir</button>
+</td>
+</tr>
+                    `;
+                });
+
+                document.getElementById("totalProdutos").textContent =
+                    produtos.length;
+
+                document.getElementById("totalEstoque").textContent =
+                    unidades;
+
+                mensagem.textContent =
+                    produtos.length + " produtos encontrados.";
+
+            } catch (erro) {
+                mensagem.textContent =
+                    "Não foi possível carregar os produtos.";
+                console.error(erro);
+            }
+        }
+
+        document.getElementById("formProduto").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const dados = {
+                nome: document.getElementById("nome").value,
+                categoria: document.getElementById("categoria").value,
+                descricao: document.getElementById("descricao").value,
+                preco: document.getElementById("preco").value
+            };
+
+            try {
+                const resposta = await fetch("/api/produtos", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                const resultado = await resposta.json();
+
+                document.getElementById("mensagemCadastro").textContent =
+                    resultado.mensagem;
+
+                if (resposta.ok) {
+                    document.getElementById("formProduto").reset();
+                    await carregarProdutos();
+                }
+
+            } catch (erro) {
+                document.getElementById("mensagemCadastro").textContent =
+                    "Erro ao cadastrar produto.";
+                console.error(erro);
+            }
+        });
+
+        async function editarProduto(id) {
+    const produto = produtosAtuais.find(p => p.id === id);
+
+    if (!produto) return;
+
+    const nome = prompt("Nome do produto:", produto.nome);
+    if (nome === null) return;
+
+    const categoria = prompt("Categoria:", produto.categoria);
+    if (categoria === null) return;
+
+    const descricao = prompt("Descrição:", produto.descricao || "");
+    if (descricao === null) return;
+
+    const preco = prompt("Preço:", produto.preco);
+    if (preco === null) return;
+
+    const quantidade = prompt("Quantidade em estoque:", produto.estoque);
+    if (quantidade === null) return;
+
+    const resposta = await fetch(`/api/produtos/${id}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            nome,
+            categoria,
+            descricao,
+            preco,
+            quantidade
+        })
+    });
+
+    const resultado = await resposta.json();
+
+    alert(resultado.mensagem);
+
+    if (resposta.ok) {
+        carregarProdutos();
+    }
+}
+
+async function excluirProduto(id) {
+    const confirmar = confirm("Tem certeza que deseja excluir este produto?");
+
+    if (!confirmar) return;
+
+    const resposta = await fetch(`/api/produtos/${id}`, {
+        method: "DELETE"
+    });
+
+    const resultado = await resposta.json();
+
+    alert(resultado.mensagem);
+
+    if (resposta.ok) {
+        carregarProdutos();
+    }
+}
+        carregarProdutos();
+    </script>
+</body>
+</html>

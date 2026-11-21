@@ -1,0 +1,184 @@
+
+from flask import Flask, jsonify, render_template, request
+from dotenv import load_dotenv
+import os
+import psycopg
+
+load_dotenv()
+
+app = Flask(__name__)
+
+@app.route("/estoque")
+def pagina_estoque():
+    return render_template("estoque.html")
+
+@app.route("/")
+def inicio():
+    return jsonify({
+        "mensagem": "NutriTech Back End funcionando!",
+        "status": "online"
+    })
+
+@app.route("/api/db-status")
+def db_status():
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+        return jsonify({"status": "erro", "mensagem": "DATABASE_URL não encontrada"}), 500
+
+    try:
+        with psycopg.connect(database_url) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT current_database()")
+                nome_banco = cursor.fetchone()[0]
+
+        return jsonify({
+            "status": "conectado",
+            "banco": nome_banco
+        })
+
+    except Exception as erro:
+        print("Erro na conexão:", erro)
+        return jsonify({
+            "status": "erro",
+            "mensagem": "Não foi possível conectar ao banco."
+        }), 500
+
+
+@app.route("/api/produtos")
+def listar_produtos():
+    try:
+        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT
+                        p.id,
+                        p.nome,
+                        p.categoria,
+                        p.descricao,
+                        p.preco,
+                        COALESCE(e.quantidade, 0) AS estoque
+                    FROM produtos p
+                    LEFT JOIN estoque e ON p.id = e.produto_id
+                    ORDER BY p.id
+                """)
+
+                produtos = cursor.fetchall()
+
+        resultado = []
+
+        for produto in produtos:
+            resultado.append({
+                "id": produto[0],
+                "nome": produto[1],
+                "categoria": produto[2],
+                "descricao": produto[3],
+                "preco": float(produto[4]),
+                "estoque": produto[5]
+            })
+
+        return jsonify(resultado)
+
+    except Exception as erro:
+        print("Erro ao consultar produtos:", erro)
+        return jsonify({
+            "status": "erro",
+            "mensagem": "Não foi possível consultar os produtos."
+        }), 500
+
+
+@app.route("/api/produtos/<int:produto_id>", methods=["PUT"])
+def editar_produto(produto_id):
+    dados = request.get_json()
+
+    if not dados:
+        return jsonify({"mensagem": "Dados não enviados."}), 400
+
+    nome = dados.get("nome")
+    categoria = dados.get("categoria")
+    descricao = dados.get("descricao")
+    preco = dados.get("preco")
+    quantidade = dados.get("quantidade")
+
+    if not nome or not categoria or preco is None or quantidade is None:
+        return jsonify({"mensagem": "Preencha todos os campos obrigatórios."}), 400
+
+    try:
+        preco = float(preco)
+        quantidade = int(quantidade)
+
+        if preco < 0 or quantidade < 0:
+            raise ValueError()
+
+    except (ValueError, TypeError):
+        return jsonify({"mensagem": "Preço ou quantidade inválidos."}), 400
+
+    try:
+        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE produtos
+                    SET nome = %s,
+                        categoria = %s,
+                        descricao = %s,
+                        preco = %s
+                    WHERE id = %s
+                    RETURNING id
+                """, (nome, categoria, descricao, preco, produto_id))
+
+                resultado = cursor.fetchone()
+
+                if not resultado:
+                    return jsonify({"mensagem": "Produto não encontrado."}), 404
+
+                cursor.execute("""
+                    UPDATE estoque
+                    SET quantidade = %s,
+                        ultima_atualizacao = CURRENT_TIMESTAMP
+                    WHERE produto_id = %s
+                """, (quantidade, produto_id))
+
+        return jsonify({"mensagem": "Produto atualizado com sucesso!"})
+
+    except psycopg.errors.UniqueViolation:
+        return jsonify({"mensagem": "Já existe um produto com esse nome."}), 409
+
+    except Exception as erro:
+        print("Erro ao editar produto:", erro)
+        return jsonify({"mensagem": "Não foi possível atualizar o produto."}), 500
+@app.route("/api/produtos/<int:produto_id>", methods=["DELETE"])
+def excluir_produto(produto_id):
+    try:
+        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
+            with conn.cursor() as cursor:
+
+                cursor.execute("""
+                    DELETE FROM estoque
+                    WHERE produto_id = %s
+                """, (produto_id,))
+
+                cursor.execute("""
+                    DELETE FROM produtos
+                    WHERE id = %s
+                    RETURNING id
+                """, (produto_id,))
+
+                resultado = cursor.fetchone()
+
+                if not resultado:
+                    return jsonify({
+                        "mensagem": "Produto não encontrado."
+                    }), 404
+
+        return jsonify({
+            "mensagem": "Produto excluído com sucesso!"
+        })
+
+    except Exception as erro:
+        print("Erro ao excluir produto:", erro)
+        return jsonify({
+            "mensagem": "Não foi possível excluir o produto."
+        }), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
