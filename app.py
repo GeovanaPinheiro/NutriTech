@@ -1,12 +1,86 @@
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from dotenv import load_dotenv
 import os
 import psycopg
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 load_dotenv()
 
 app = Flask(__name__)
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return jsonify({
+            "text": "O assistente ainda não foi configurado. Defina GEMINI_API_KEY no arquivo .env."
+        }), 503
+
+    data = request.get_json(silent=True) or {}
+    system_instruction = data.get("systemInstruction")
+    contents = data.get("contents")
+
+    if not isinstance(system_instruction, str) or not system_instruction.strip():
+        return jsonify({"text": "Não foi possível preparar a conversa."}), 400
+
+    if not isinstance(contents, list) or not contents:
+        return jsonify({"text": "Digite sua pergunta para o Max."}), 400
+
+    payload = json.dumps({
+        "systemInstruction": {
+            "parts": [{"text": system_instruction}]
+        },
+        "contents": contents,
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 800
+        }
+    }).encode("utf-8")
+    gemini_request = Request(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key
+        },
+        method="POST"
+    )
+
+    try:
+        with urlopen(gemini_request, timeout=30) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        print(f"Erro da API Gemini ({error.code}): {error.read().decode('utf-8', errors='replace')}")
+        return jsonify({
+            "text": "Não consegui responder no momento. Tente novamente em instantes."
+        }), 502
+    except (URLError, TimeoutError) as error:
+        print(f"Falha ao conectar com a API Gemini: {error}")
+        return jsonify({
+            "text": "Não consegui conectar ao assistente. Tente novamente em instantes."
+        }), 502
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        print(f"Resposta inválida da API Gemini: {error}")
+        return jsonify({
+            "text": "O assistente retornou uma resposta inválida. Tente novamente."
+        }), 502
+
+    text = "".join(
+        part.get("text", "")
+        for candidate in result.get("candidates", [])
+        for part in candidate.get("content", {}).get("parts", [])
+        if isinstance(part, dict)
+    ).strip()
+
+    if not text:
+        return jsonify({
+            "text": "Não consegui montar uma resposta agora. Tente novamente em instantes."
+        }), 502
+
+    return jsonify({"text": text})
 
 @app.route("/estoque")
 def pagina_estoque():
@@ -14,6 +88,18 @@ def pagina_estoque():
 
 @app.route("/")
 def inicio():
+    return send_from_directory(app.root_path, "index.html")
+
+@app.route("/<path:asset>")
+def frontend_asset(asset):
+    public_assets = {"style.css", "chatbot.css", "script.js", "chatbot.js"}
+    if asset not in public_assets and not asset.startswith("images/"):
+        return jsonify({"mensagem": "Arquivo não encontrado."}), 404
+
+    return send_from_directory(app.root_path, asset)
+
+@app.route("/api/status")
+def status():
     return jsonify({
         "mensagem": "NutriTech Back End funcionando!",
         "status": "online"
@@ -44,60 +130,6 @@ def db_status():
             "mensagem": "Não foi possível conectar ao banco."
         }), 500
 
-@app.route("/api/produtos", methods=["POST"])
-def cadastrar_produto():
-    dados = request.get_json()
-
-    if not dados:
-        return jsonify({"mensagem": "Dados não enviados."}), 400
-
-    nome = dados.get("nome")
-    categoria = dados.get("categoria")
-    descricao = dados.get("descricao")
-    preco = dados.get("preco")
-
-    if not nome or not categoria or preco is None:
-        return jsonify({"mensagem": "Preencha os campos obrigatórios."}), 400
-
-    try:
-        preco = float(preco)
-
-        if preco < 0:
-            raise ValueError()
-
-    except (ValueError, TypeError):
-        return jsonify({"mensagem": "Preço inválido."}), 400
-
-    try:
-        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO produtos (nome, categoria, descricao, preco)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id
-                """, (nome, categoria, descricao, preco))
-
-                produto_id = cursor.fetchone()[0]
-
-                cursor.execute("""
-                    INSERT INTO estoque (produto_id, quantidade)
-                    VALUES (%s, 0)
-                """, (produto_id,))
-
-        return jsonify({
-            "mensagem": "Produto cadastrado com sucesso!"
-        }), 201
-
-    except psycopg.errors.UniqueViolation:
-        return jsonify({
-            "mensagem": "Já existe um produto com esse nome."
-        }), 409
-
-    except Exception as erro:
-        print("Erro ao cadastrar produto:", erro)
-        return jsonify({
-            "mensagem": "Não foi possível cadastrar o produto."
-        }), 500
 
 @app.route("/api/produtos")
 def listar_produtos():
