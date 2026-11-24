@@ -1,258 +1,78 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const toggleButton =
-    document.getElementById("chatbot-toggle") ||
-    document.getElementById("chat-toggle") ||
-    document.getElementById("open-chat") ||
-    document.querySelector("[data-chat-toggle]") ||
-    document.querySelector(".chatbot-toggle") ||
-    document.querySelector(".chat-toggle") ||
-    document.querySelector(".chat-fab");
+  const openBtn = document.getElementById("openChat");
+  const closeBtn = document.getElementById("closeChat");
+  const chatBox = document.getElementById("chatbot");
+  const messagesEl = document.getElementById("chatMessages");
+  const inputEl = document.getElementById("chatInput");
+  const sendBtn = document.getElementById("sendChat");
 
-  const chatWindow =
-    document.getElementById("chatbot-window") ||
-    document.getElementById("chat-window") ||
-    document.getElementById("chatbot-box") ||
-    document.getElementById("chat-box") ||
-    document.querySelector("[data-chat-window]") ||
-    document.querySelector(".chatbot-window") ||
-    document.querySelector(".chat-window") ||
-    document.querySelector(".chatbot-container") ||
-    document.querySelector(".chat-container");
-
-  const closeButton =
-    document.getElementById("chatbot-close") ||
-    document.getElementById("chat-close") ||
-    document.querySelector("[data-chat-close]") ||
-    (chatWindow
-      ? chatWindow.querySelector(
-          ".chatbot-close, .chat-close, .close-chat, [aria-label*='fechar' i], [aria-label*='close' i]"
-        )
-      : null);
-
-  const form =
-    (chatWindow && chatWindow.querySelector("form")) ||
-    document.getElementById("chatbot-form") ||
-    document.getElementById("chat-form") ||
-    document.querySelector("[data-chat-form]") ||
-    document.querySelector(".chatbot-form") ||
-    document.querySelector(".chat-form");
-
-  const input =
-    (form && form.querySelector("input, textarea")) ||
-    (chatWindow && chatWindow.querySelector("input, textarea")) ||
-    document.getElementById("chatbot-input") ||
-    document.getElementById("chat-input") ||
-    document.querySelector("[data-chat-input]") ||
-    document.querySelector(".chatbot-input") ||
-    document.querySelector(".chat-input");
-
-  const messagesContainer =
-    (chatWindow &&
-      chatWindow.querySelector(
-        "#chat-messages, #chatbot-messages, .chat-messages, .chatbot-messages, [data-chat-messages]"
-      )) ||
-    document.getElementById("chat-messages") ||
-    document.getElementById("chatbot-messages") ||
-    document.querySelector(".chat-messages") ||
-    document.querySelector(".chatbot-messages");
-
-  const sendButton =
-    (form && form.querySelector('button[type="submit"], button')) ||
-    (chatWindow && chatWindow.querySelector("#chat-send, #chatbot-send, .chat-send, .chatbot-send")) ||
-    document.getElementById("chat-send") ||
-    document.getElementById("chatbot-send");
-
-  function setChatOpen(isOpen) {
-    if (!chatWindow) return;
-
-    chatWindow.classList.toggle("open", isOpen);
-    chatWindow.classList.toggle("active", isOpen);
-    chatWindow.classList.toggle("show", isOpen);
-    chatWindow.classList.toggle("hidden", !isOpen);
-
-    if (isOpen) {
-      chatWindow.style.display = "flex";
-      chatWindow.setAttribute("aria-hidden", "false");
-      if (input) {
-        setTimeout(() => input.focus(), 50);
-      }
-    } else {
-      chatWindow.style.display = "none";
-      chatWindow.setAttribute("aria-hidden", "true");
-    }
-
-    if (toggleButton) {
-      toggleButton.setAttribute("aria-expanded", String(isOpen));
-    }
-  }
-
-  function isChatCurrentlyOpen() {
-    if (!chatWindow) return false;
-    const computedDisplay = window.getComputedStyle(chatWindow).display;
-    return (
-      chatWindow.classList.contains("open") ||
-      chatWindow.classList.contains("active") ||
-      chatWindow.classList.contains("show") ||
-      (computedDisplay !== "none" && !chatWindow.classList.contains("hidden"))
-    );
-  }
-
-  if (toggleButton && chatWindow) {
-    // Se a janela já vier aberta ou fechada no CSS, respeita ou garante fechada inicialmente se oculta
-    if (window.getComputedStyle(chatWindow).display === "none") {
-      setChatOpen(false);
-    }
-
-    toggleButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setChatOpen(!isChatCurrentlyOpen());
+  if (!openBtn || !chatBox || !messagesEl || !inputEl || !sendBtn) {
+    console.error("Elementos do chatbot não encontrados no index.html.", {
+      openBtn,
+      chatBox,
+      messagesEl,
+      inputEl,
+      sendBtn,
     });
-  }
-
-  if (closeButton && chatWindow) {
-    closeButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setChatOpen(false);
-    });
-  }
-
-  function appendMessage(text, sender = "bot") {
-    if (!messagesContainer) return null;
-
-    const msgEl = document.createElement("div");
-    msgEl.className =
-      sender === "user"
-        ? "chat-message chat-message--user user-message"
-        : "chat-message chat-message--bot bot-message";
-    msgEl.textContent = text;
-    messagesContainer.appendChild(msgEl);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    return msgEl;
-  }
-
-  async function sendToGemini(mensagem) {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ mensagem }),
-    });
-
-    let data = {};
-    try {
-      data = await response.json();
-    } catch (_) {
-      data = {};
-    }
-
-    if (!response.ok || data.sucesso === false) {
-      console.error("Falha em /api/chat:", data);
-      throw new Error(
-        data.error || `O servidor respondeu com erro HTTP ${response.status}.`
-      );
-    }
-
-    return data.resposta || data.reply || data.text || "Sem resposta no momento.";
-  }
-
-  async function handleSend(event) {
-    if (event) event.preventDefault();
-    if (!input) return;
-
-    const textoDigitado = (input.value || "").trim();
-    if (!textoDigitado) {
-      input.focus();
-      return;
-    }
-
-    appendMessage(textoDigitado, "user");
-    input.value = "";
-    input.focus();
-
-    const loadingEl = appendMessage("Pensando...", "bot");
-
-    if (sendButton) sendButton.disabled = true;
-    input.disabled = true;
-
-    try {
-      const respostaBot = await sendToGemini(textoDigitado);
-      if (loadingEl) {
-        loadingEl.textContent = respostaBot;
-      } else {
-        appendMessage(respostaBot, "bot");
-      }
-    } catch (err) {
-      console.error("Erro do chatbot:", err);
-      const msgErro =
-        "Não consegui responder agora. Tente novamente em instantes.";
-      if (loadingEl) {
-        loadingEl.textContent = msgErro;
-      } else {
-        appendMessage(msgErro, "bot");
-      }
-    } finally {
-      if (sendButton) sendButton.disabled = false;
-      input.disabled = false;
-      input.focus();
-    }
-  }
-
-  if (form) {
-    form.addEventListener("submit", handleSend);
-  }
-
-  if (sendButton && (!form || !form.contains(sendButton) || sendButton.type !== "submit")) {
-    sendButton.addEventListener("click", handleSend);
-  }
-
-  if (input && !form) {
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        handleSend(event);
-      }
-    });
-  }
-});document.addEventListener("DOMContentLoaded", () => {
-  const form =
-    document.getElementById("chat-form") ||
-    document.querySelector("[data-chat-form]") ||
-    document.querySelector(".chat-form");
-
-  const input =
-    document.getElementById("chat-input") ||
-    document.querySelector("[data-chat-input]") ||
-    document.querySelector(".chat-input") ||
-    (form ? form.querySelector("input, textarea") : null);
-
-  const messagesContainer =
-    document.getElementById("chat-messages") ||
-    document.querySelector("[data-chat-messages]") ||
-    document.querySelector(".chat-messages");
-
-  const sendButton =
-    document.getElementById("chat-send") ||
-    (form ? form.querySelector('button[type="submit"], button') : null);
-
-  if (!form || !input || !messagesContainer) {
-    console.warn("Elementos do chatbot não encontrados no DOM. Confira os IDs/classes no index.html.");
     return;
   }
 
-  function appendMessage(text, sender = "bot") {
-    const msgEl = document.createElement("div");
-    msgEl.classList.add("chat-message", `chat-message--${sender}`);
-    msgEl.textContent = text;
-    messagesContainer.appendChild(msgEl);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    return msgEl;
+  // Garante estado inicial fechado até clicar no botão do Max
+  chatBox.style.display = "none";
+
+  function abrirChat() {
+    chatBox.style.display = "flex";
+    chatBox.style.flexDirection = "column";
+    chatBox.classList.add("open", "active");
+    openBtn.style.display = "none";
+    setTimeout(() => inputEl.focus(), 50);
   }
 
-  async function sendToGemini(mensagem) {
-    const response = await fetch("/api/chat", {
+  function fecharChat() {
+    chatBox.style.display = "none";
+    chatBox.classList.remove("open", "active");
+    openBtn.style.display = "flex";
+  }
+
+  openBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    abrirChat();
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      fecharChat();
+    });
+  }
+
+  function adicionarMensagem(texto, remetente = "bot") {
+    const item = document.createElement("div");
+    item.className = `chat-msg chat-msg--${remetente}`;
+    item.textContent = texto;
+    item.style.padding = "8px 12px";
+    item.style.margin = "6px 0";
+    item.style.borderRadius = "10px";
+    item.style.maxWidth = "85%";
+    item.style.wordBreak = "break-word";
+
+    if (remetente === "user") {
+      item.style.alignSelf = "flex-end";
+      item.style.background = "#0af0c6";
+      item.style.color = "#06121a";
+    } else {
+      item.style.alignSelf = "flex-start";
+      item.style.background = "#15242d";
+      item.style.color = "#ffffff";
+    }
+
+    messagesEl.appendChild(item);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return item;
+  }
+
+  async function enviarParaBackend(mensagem) {
+    const resp = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -262,56 +82,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let data = {};
     try {
-      data = await response.json();
+      data = await resp.json();
     } catch (_) {
       data = {};
     }
 
-    if (!response.ok || data.sucesso === false) {
+    if (!resp.ok || data.sucesso === false) {
       console.error("Falha em /api/chat:", data);
       throw new Error(
-        data.error || `O servidor respondeu com erro HTTP ${response.status}.`
+        data.error || `O servidor respondeu com erro HTTP ${resp.status}.`
       );
     }
 
     return data.resposta || data.reply || data.text || "Sem resposta no momento.";
   }
 
-  async function handleSubmit(event) {
-    if (event) event.preventDefault();
-
-    const textoDigitado = (input.value || "").trim();
-    if (!textoDigitado) {
-      input.focus();
+  async function handleEnviar() {
+    const texto = (inputEl.value || "").trim();
+    if (!texto) {
+      inputEl.focus();
       return;
     }
 
-    appendMessage(textoDigitado, "user");
-    input.value = "";
-    input.focus();
+    adicionarMensagem(texto, "user");
+    inputEl.value = "";
+    inputEl.focus();
 
-    const loadingEl = appendMessage("Pensando...", "bot");
+    const carregando = adicionarMensagem("Pensando...", "bot");
 
-    if (sendButton) sendButton.disabled = true;
-    input.disabled = true;
+    sendBtn.disabled = true;
+    inputEl.disabled = true;
 
     try {
-      const respostaBot = await sendToGemini(textoDigitado);
-      loadingEl.textContent = respostaBot;
+      const resposta = await enviarParaBackend(texto);
+      carregando.textContent = resposta;
     } catch (err) {
       console.error("Erro do chatbot:", err);
-      loadingEl.textContent =
+      carregando.textContent =
         "Não consegui responder agora. Tente novamente em instantes.";
     } finally {
-      if (sendButton) sendButton.disabled = false;
-      input.disabled = false;
-      input.focus();
+      sendBtn.disabled = false;
+      inputEl.disabled = false;
+      inputEl.focus();
     }
   }
 
-  form.addEventListener("submit", handleSubmit);
+  sendBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleEnviar();
+  });
 
-  if (sendButton && sendButton.type !== "submit") {
-    sendButton.addEventListener("click", handleSubmit);
-  }
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleEnviar();
+    }
+  });
 });
