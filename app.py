@@ -44,6 +44,60 @@ def db_status():
             "mensagem": "Não foi possível conectar ao banco."
         }), 500
 
+@app.route("/api/produtos", methods=["POST"])
+def cadastrar_produto():
+    dados = request.get_json()
+
+    if not dados:
+        return jsonify({"mensagem": "Dados não enviados."}), 400
+
+    nome = dados.get("nome")
+    categoria = dados.get("categoria")
+    descricao = dados.get("descricao")
+    preco = dados.get("preco")
+
+    if not nome or not categoria or preco is None:
+        return jsonify({"mensagem": "Preencha os campos obrigatórios."}), 400
+
+    try:
+        preco = float(preco)
+
+        if preco < 0:
+            raise ValueError()
+
+    except (ValueError, TypeError):
+        return jsonify({"mensagem": "Preço inválido."}), 400
+
+    try:
+        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO produtos (nome, categoria, descricao, preco)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                """, (nome, categoria, descricao, preco))
+
+                produto_id = cursor.fetchone()[0]
+
+                cursor.execute("""
+                    INSERT INTO estoque (produto_id, quantidade)
+                    VALUES (%s, 0)
+                """, (produto_id,))
+
+        return jsonify({
+            "mensagem": "Produto cadastrado com sucesso!"
+        }), 201
+
+    except psycopg.errors.UniqueViolation:
+        return jsonify({
+            "mensagem": "Já existe um produto com esse nome."
+        }), 409
+
+    except Exception as erro:
+        print("Erro ao cadastrar produto:", erro)
+        return jsonify({
+            "mensagem": "Não foi possível cadastrar o produto."
+        }), 500
 
 @app.route("/api/produtos")
 def listar_produtos():
