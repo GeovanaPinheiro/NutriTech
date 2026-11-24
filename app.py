@@ -5,7 +5,6 @@ from flask import Flask, jsonify, request
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Permite definir o modelo principal via env (ex.: GEMINI_MODEL) e mantém alternativas em sequência
 MODELO_PRINCIPAL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 MODELOS_ALTERNATIVOS = [
     MODELO_PRINCIPAL,
@@ -13,7 +12,6 @@ MODELOS_ALTERNATIVOS = [
     "gemini-2.0-flash",
 ]
 
-# Remove duplicatas mantendo a ordem de prioridade e normaliza o nome sem "models/" para montar a URL
 CANDIDATOS_MODELO = []
 for m in MODELOS_ALTERNATIVOS:
     if m:
