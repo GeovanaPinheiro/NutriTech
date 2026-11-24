@@ -71,6 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return item;
   }
 
+  // Mensagem inicial de boas-vindas do Max
+  adicionarMensagem(
+    "Olá! Sou o Max, seu assistente virtual da NutriTech. Qual é a sua dúvida?",
+    "bot"
+  );
+
   async function enviarParaBackend(mensagem) {
     const resp = await fetch("/api/chat", {
       method: "POST",
