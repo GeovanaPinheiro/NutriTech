@@ -2,7 +2,7 @@ import os
 import time
 import psycopg2
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -27,6 +27,20 @@ for m in MODELOS_ALTERNATIVOS:
         nome_limpo = m.replace("models/", "").strip()
         if nome_limpo and nome_limpo not in CANDIDATOS_MODELO:
             CANDIDATOS_MODELO.append(nome_limpo)
+
+EXTENSOES_PERMITIDAS = (
+    ".html",
+    ".css",
+    ".js",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".woff2",
+    ".ttf",
+)
 
 
 def get_db_connection():
@@ -75,7 +89,7 @@ def chamar_gemini_com_fallback(prompt_usuario, system_instruction=None):
 
         for tentativa in range(1, 3):
             try:
-                resp = requests.post(url, json=payload, timeout=20)
+                resp = requests.post(url, json=payload, timeout=15)
                 dados = resp.json() if resp.content else {}
 
                 if resp.status_code == 200:
@@ -120,15 +134,32 @@ def chamar_gemini_com_fallback(prompt_usuario, system_instruction=None):
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "API do NutriTech a funcionar com sucesso!"})
+    return send_from_directory(".", "index.html")
+
+
+@app.route("/<path:filename>", methods=["GET"])
+def arquivos_estaticos(filename):
+    if filename.startswith("api/"):
+        return jsonify({"erro": "Rota não encontrada"}), 404
+
+    if not filename.lower().endswith(EXTENSOES_PERMITIDAS):
+        return jsonify({"erro": "Arquivo não permitido"}), 403
+
+    return send_from_directory(".", filename)
 
 
 @app.route("/api/respostas", methods=["POST"])
 def receber_formulario():
     dados = request.get_json(silent=True) or {}
-    nome = dados.get("nome")
-    email = dados.get("email")
-    mensagem = dados.get("mensagem")
+    nome = (dados.get("nome") or "").strip()
+    email = (dados.get("email") or "").strip()
+    mensagem = (dados.get("mensagem") or "").strip()
+
+    if not nome or not email or not mensagem:
+        return jsonify({
+            "sucesso": False,
+            "erro": "Preencha nome, e-mail e mensagem.",
+        }), 400
 
     try:
         conn = get_db_connection()
