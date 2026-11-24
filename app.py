@@ -196,7 +196,15 @@ def receber_formulario():
 @app.route("/api/chat", methods=["POST"])
 def chat():
     dados = request.get_json(silent=True) or {}
-    mensagem = (dados.get("mensagem") or dados.get("message") or "").strip()
+    mensagem = (
+        dados.get("mensagem")
+        or dados.get("message")
+        or dados.get("prompt")
+        or dados.get("pergunta")
+        or dados.get("text")
+        or dados.get("texto")
+        or ""
+    ).strip()
 
     if not mensagem:
         return jsonify({
