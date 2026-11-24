@@ -17,7 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Garante estado inicial fechado até clicar no botão do Max
   chatBox.style.display = "none";
 
   function abrirChat() {
@@ -71,7 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return item;
   }
 
-  // Mensagem inicial de boas-vindas do Max
   adicionarMensagem(
     "Olá! Sou o Max, seu assistente virtual da NutriTech. Qual é a sua dúvida?",
     "bot"
