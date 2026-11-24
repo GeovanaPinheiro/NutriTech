@@ -1,244 +1,99 @@
-const getProductFacts = () => {
-    const cards = [...document.querySelectorAll('.card')];
-    const products = cards
-        .map((card) => {
-            const name = card.querySelector('h3')?.textContent?.trim();
-            const description = card.querySelector('p')?.textContent?.trim();
-            const price = card.querySelector('.price')?.textContent?.trim();
+document.addEventListener("DOMContentLoaded", () => {
+  const form =
+    document.getElementById("chat-form") ||
+    document.querySelector("[data-chat-form]") ||
+    document.querySelector(".chat-form");
 
-            if (!name) return null;
-            return {
-                nome: name,
-                descricao: description || '[PREENCHER]',
-                preco: price || '[PREENCHER]'
-            };
-        })
-        .filter(Boolean);
+  const input =
+    document.getElementById("chat-input") ||
+    document.querySelector("[data-chat-input]") ||
+    document.querySelector(".chat-input") ||
+    (form ? form.querySelector("input, textarea") : null);
 
-    const aboutText = document.querySelector('#sobre .sobre-content')?.innerText?.replace(/\s+/g, ' ').trim() || '[PREENCHER]';
-    const contactTitle = document.querySelector('#contato .section-title')?.textContent?.trim() || 'Contato';
-    const locationText = document.getElementById('locationBtn')?.textContent?.trim() || '[PREENCHER]';
-    const navigationText = [...document.querySelectorAll('.nav-links a, .location-btn')]
-        .map((link) => link.textContent?.trim())
-        .filter(Boolean)
-        .join(', ');
+  const messagesContainer =
+    document.getElementById("chat-messages") ||
+    document.querySelector("[data-chat-messages]") ||
+    document.querySelector(".chat-messages");
 
-    return {
-        marca: 'NutriTech',
-        laboratorio: 'Nutrilab',
-        sobre: aboutText,
-        contato: `Seção de contato: ${contactTitle}. E-mails, WhatsApp e endereço físico ainda precisam ser preenchidos no projeto: [PREENCHER].`,
-        localizacao: `Botão de localização do site: ${locationText}. Endereço físico real da loja: [PREENCHER].`,
-        navegacao: navigationText,
-        produtos: products
-    };
-};
+  const sendButton =
+    document.getElementById("chat-send") ||
+    (form ? form.querySelector('button[type="submit"], button') : null);
 
-const buildSystemPrompt = () => {
-    const facts = getProductFacts();
+  if (!form || !input || !messagesContainer) {
+    console.warn("Elementos do chatbot não encontrados no DOM. Confira os IDs/classes no index.html.");
+    return;
+  }
 
-    return `
-Você é o Max, assistente virtual oficial da NutriTech.
+  function appendMessage(text, sender = "bot") {
+    const msgEl = document.createElement("div");
+    msgEl.classList.add("chat-message", `chat-message--${sender}`);
+    msgEl.textContent = text;
+    messagesContainer.appendChild(msgEl);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    return msgEl;
+  }
 
-Personalidade:
-- Simpática, motivadora, objetiva e acessível.
-- Responda em português do Brasil.
-- Máximo de 4 frases por resposta.
-- Use emojis leves, sem exagerar.
+  async function sendToGemini(mensagem) {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mensagem }),
+    });
 
-Papel:
-- Tirar dúvidas sobre os produtos, marca e navegação do site.
-- Explicar como navegar em Início, Snacks, Performance, A Marca, Produtos, Contato e Localização.
-- Apoiar o visitante de forma prática e amigável.
-- Melhorar a navegação e a experiência de compra.
-
-Contexto da loja:
-- Marca: ${facts.marca}
-- Laboratório / origem da marca: ${facts.laboratorio}
-- Sobre a marca: ${facts.sobre}
-- Navegação do site: ${facts.navegacao}
-- Contato: ${facts.contato}
-- Localização: ${facts.localizacao}
-- Produtos reais do site:
-${facts.produtos.map((produto) => `• ${produto.nome} — ${produto.descricao} — ${produto.preco}`).join('\n')}
-
-Regras de comportamento:
-- Responda SOMENTE sobre a NutriTech, seus produtos e o uso do site.
-- Se o assunto fugir disso, recuse educadamente e redirecione para o que você pode ajudar.
-- Não dê diagnóstico médico nem prescreva dietas, doses ou planos terapêuticos.
-- Em casos de saúde, recomende procurar um nutricionista ou médico.
-- Não invente informações sobre a loja, produtos ou atendimento.
-- Se não souber algo, diga que pode orientar pelo contato da loja ou pela página de Contato e peça que o visitante entre em contato.
-- Se o visitante pedir busca por produto, sugira os itens disponíveis reais do site.
-
-Importante: se houver alguma informação faltando no front-end atual, mantenha esse campo como [PREENCHER] e informe ao usuário que ele precisa completar no projeto.
-`.trim();
-};
-
-const history = [];
-let isTyping = false;
-let welcomeShown = false;
-
-const getChatElements = () => ({
-    chat: document.getElementById('chatbot'),
-    openButton: document.getElementById('openChat'),
-    closeButton: document.getElementById('closeChat'),
-    messages: document.getElementById('chatMessages'),
-    input: document.getElementById('chatInput'),
-    sendButton: document.getElementById('sendChat')
-});
-
-const appendMessage = (sender, text) => {
-    const { messages } = getChatElements();
-    const messageBox = document.createElement('div');
-    messageBox.className = `message ${sender}`;
-    messageBox.textContent = text;
-    messages.appendChild(messageBox);
-    messages.scrollTop = messages.scrollHeight;
-};
-
-const setTypingState = (typing) => {
-    const { input, sendButton, messages } = getChatElements();
-    isTyping = typing;
-
-    if (input) input.disabled = typing;
-    if (sendButton) sendButton.disabled = typing;
-
-    const existingTyping = messages?.querySelector('.message.typing');
-    if (typing) {
-        if (!existingTyping) {
-            const typingBox = document.createElement('div');
-            typingBox.className = 'message bot typing';
-            typingBox.textContent = 'Digitando';
-            messages.appendChild(typingBox);
-            messages.scrollTop = messages.scrollHeight;
-        }
-    } else if (existingTyping) {
-        existingTyping.remove();
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = {};
     }
-};
 
-const showWelcome = () => {
-    if (welcomeShown) return;
-    appendMessage('bot', 'Olá! Sou o Max, seu assistente da NutriTech. Posso te ajudar a encontrar suplementos, snacks e produtos para performance no site.');
-    welcomeShown = true;
-};
-
-const toggleChat = (isOpen) => {
-    const { chat, openButton } = getChatElements();
-    if (!chat || !openButton) return;
-
-    chat.classList.toggle('active', isOpen);
-    openButton.style.display = isOpen ? 'none' : 'flex';
-
-    if (isOpen && !welcomeShown) {
-        showWelcome();
+    if (!response.ok || data.sucesso === false) {
+      console.error("Falha em /api/chat:", data);
+      throw new Error(
+        data.error || `O servidor respondeu com erro HTTP ${response.status}.`
+      );
     }
-};
 
-const removeLastUserMessageFromHistory = () => {
-    if (history.length && history[history.length - 1].role === 'user') {
-        history.pop();
+    return data.resposta || data.reply || data.text || "Sem resposta no momento.";
+  }
+
+  async function handleSubmit(event) {
+    if (event) event.preventDefault();
+
+    const textoDigitado = (input.value || "").trim();
+    if (!textoDigitado) {
+      input.focus();
+      return;
     }
-};
 
-const sendToGemini = async () => {
-    const { input, sendButton } = getChatElements();
-    const text = input?.value.trim();
+    appendMessage(textoDigitado, "user");
+    input.value = "";
+    input.focus();
 
-    if (!text || isTyping) return;
+    const loadingEl = appendMessage("Pensando...", "bot");
 
-    appendMessage('user', text);
-    history.push({ role: 'user', parts: [{ text }] });
-    input.value = '';
-    setTypingState(true);
+    if (sendButton) sendButton.disabled = true;
+    input.disabled = true;
 
     try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                systemInstruction: buildSystemPrompt(),
-                contents: history
-            })
-        });
-        const responseBody = await response.text();
-        let data = null;
-
-        try {
-            data = responseBody ? JSON.parse(responseBody) : null;
-        } catch {
-            console.error('Resposta inválida de /api/chat:', {
-                status: response.status,
-                body: responseBody.slice(0, 1000)
-            });
-        }
-
-        if (!response.ok) {
-            console.error('Falha em /api/chat:', {
-                status: response.status,
-                error: data?.error || responseBody.slice(0, 1000)
-            });
-            throw new Error(data?.text || `O servidor respondeu com erro HTTP ${response.status}.`);
-        }
-
-        if (!data || typeof data !== 'object') {
-            throw new Error('O servidor retornou uma resposta inválida. Consulte o console para ver os detalhes.');
-        }
-
-        const botReply = data?.text?.trim();
-        if (!botReply) {
-            throw new Error('O assistente não retornou uma resposta. Tente novamente.');
-        }
-
-        history.push({ role: 'model', parts: [{ text: botReply }] });
-        appendMessage('bot', botReply);
-    } catch (error) {
-        console.error('Erro do chatbot:', error);
-        appendMessage('bot', error?.message || 'Não consegui responder no momento. Tente novamente em instantes ou use o contato da loja para falar com o atendimento.');
-        removeLastUserMessageFromHistory();
+      const respostaBot = await sendToGemini(textoDigitado);
+      loadingEl.textContent = respostaBot;
+    } catch (err) {
+      console.error("Erro do chatbot:", err);
+      loadingEl.textContent =
+        "Não consegui responder agora. Tente novamente em instantes.";
     } finally {
-        setTypingState(false);
-        if (sendButton) sendButton.disabled = false;
+      if (sendButton) sendButton.disabled = false;
+      input.disabled = false;
+      input.focus();
     }
-};
+  }
 
-const bindChatEvents = () => {
-    const { openButton, closeButton, input, sendButton } = getChatElements();
+  form.addEventListener("submit", handleSubmit);
 
-    if (openButton) {
-        openButton.addEventListener('click', () => toggleChat(true));
-    }
-
-    if (closeButton) {
-        closeButton.addEventListener('click', () => toggleChat(false));
-    }
-
-    if (sendButton) {
-        sendButton.addEventListener('click', sendToGemini);
-    }
-
-    if (input) {
-        input.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendToGemini();
-            }
-        });
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    bindChatEvents();
-    const { chat, openButton } = getChatElements();
-
-    if (chat) {
-        chat.setAttribute('aria-live', 'polite');
-    }
-
-    if (openButton) {
-        openButton.style.display = 'flex';
-    }
+  if (sendButton && sendButton.type !== "submit") {
+    sendButton.addEventListener("click", handleSubmit);
+  }
 });
