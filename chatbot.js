@@ -164,10 +164,28 @@ const sendToGemini = async () => {
                 contents: history
             })
         });
-        const data = await response.json();
+        const responseBody = await response.text();
+        let data = null;
+
+        try {
+            data = responseBody ? JSON.parse(responseBody) : null;
+        } catch {
+            console.error('Resposta inválida de /api/chat:', {
+                status: response.status,
+                body: responseBody.slice(0, 1000)
+            });
+        }
 
         if (!response.ok) {
-            throw new Error(data?.text || 'Não foi possível consultar o assistente.');
+            console.error('Falha em /api/chat:', {
+                status: response.status,
+                error: data?.error || responseBody.slice(0, 1000)
+            });
+            throw new Error(data?.text || `O servidor respondeu com erro HTTP ${response.status}.`);
+        }
+
+        if (!data || typeof data !== 'object') {
+            throw new Error('O servidor retornou uma resposta inválida. Consulte o console para ver os detalhes.');
         }
 
         const botReply = data?.text?.trim();
