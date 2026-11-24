@@ -17,8 +17,11 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MODELO_PRINCIPAL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 MODELOS_ALTERNATIVOS = [
     MODELO_PRINCIPAL,
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.5-flash-lite",
 ]
 
 CANDIDATOS_MODELO = []
@@ -87,163 +90,13 @@ def chamar_gemini_com_fallback(prompt_usuario, system_instruction=None):
                 "parts": [{"text": system_instruction}]
             }
 
-        for tentativa in range(1, 3):
-            try:
-                resp = requests.post(url, json=payload, timeout=15)
-                dados = resp.json() if resp.content else {}
+        try:
+            resp = requests.post(url, json=payload, timeout=10)
+            dados = resp.json() if resp.content else {}
 
-                if resp.status_code == 200:
-                    candidatos = dados.get("candidates", [])
-                    if candidatos:
-                        partes = candidatos[0].get("content", {}).get("parts", [])
-                        texto = "".join(
-                            p.get("text", "") for p in partes if "text" in p
-                        ).strip()
-                        if texto:
-                            return texto, modelo
-
-                msg_erro = (
-                    dados.get("error", {}).get("message")
-                    or resp.text
-                    or f"HTTP {resp.status_code}"
-                )
-                msg_lower = msg_erro.lower()
-
-                eh_sobrecarga = (
-                    resp.status_code in (429, 502, 503, 504)
-                    or any(p in msg_lower for p in palavras_congestionamento)
-                )
-
-                erros_por_modelo.append(f"{modelo} (HTTP {resp.status_code}): {msg_erro}")
-
-                if eh_sobrecarga and tentativa < 2:
-                    time.sleep(1.2)
-                    continue
-
-                break
-
-            except requests.RequestException as exc:
-                erros_por_modelo.append(f"{modelo} (rede/timeout): {str(exc)}")
-                if tentativa < 2:
-                    time.sleep(1.2)
-                    continue
-                break
-
-    raise RuntimeError(" | ".join(erros_por_modelo))
-
-
-@app.route("/", methods=["GET"])
-def home():
-    return send_from_directory(".", "index.html")
-
-
-@app.route("/<path:filename>", methods=["GET"])
-def arquivos_estaticos(filename):
-    if filename.startswith("api/"):
-        return jsonify({"erro": "Rota não encontrada"}), 404
-
-    if not filename.lower().endswith(EXTENSOES_PERMITIDAS):
-        return jsonify({"erro": "Arquivo não permitido"}), 403
-
-    return send_from_directory(".", filename)
-
-
-@app.route("/api/respostas", methods=["POST"])
-def receber_formulario():
-    dados = request.get_json(silent=True) or {}
-    nome = (dados.get("nome") or "").strip()
-    email = (dados.get("email") or "").strip()
-    mensagem = (dados.get("mensagem") or "").strip()
-
-    if not nome or not email or not mensagem:
-        return jsonify({
-            "sucesso": False,
-            "erro": "Preencha nome, e-mail e mensagem.",
-        }), 400
-
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS respostas_formulario (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(100) NOT NULL,
-                email VARCHAR(100) NOT NULL,
-                mensagem TEXT NOT NULL,
-                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-
-        cur.execute(
-            "INSERT INTO respostas_formulario (nome, email, mensagem) VALUES (%s, %s, %s)",
-            (nome, email, mensagem),
-        )
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({
-            "sucesso": True,
-            "mensagem": "Resposta do formulário salva no Neon com sucesso!",
-        }), 201
-
-    except Exception as e:
-        return jsonify({"sucesso": False, "erro": str(e)}), 500
-
-
-@app.route("/api/chat", methods=["POST"])
-def chat():
-    dados = request.get_json(silent=True) or {}
-    mensagem = (
-        dados.get("mensagem")
-        or dados.get("message")
-        or dados.get("prompt")
-        or dados.get("pergunta")
-        or dados.get("text")
-        or dados.get("texto")
-        or ""
-    ).strip()
-
-    if not mensagem:
-        return jsonify({
-            "sucesso": False,
-            "error": "Envie uma mensagem válida para o chatbot.",
-        }), 400
-
-    instrucao_sistema = (
-        "Você é o assistente virtual do NutriTech. Responda de forma clara, "
-        "objetiva e prestativa em português."
-    )
-
-    try:
-        resposta_texto, modelo_usado = chamar_gemini_com_fallback(
-            mensagem,
-            system_instruction=instrucao_sistema,
-        )
-        return jsonify({
-            "sucesso": True,
-            "resposta": resposta_texto,
-            "modelo": modelo_usado,
-        }), 200
-
-    except Exception as e:
-        detalhe = str(e)
-        status_code = (
-            502
-            if any(
-                k in detalhe.lower()
-                for k in ("502", "503", "429", "high demand", "overloaded", "timeout")
-            )
-            else 500
-        )
-        return jsonify({
-            "sucesso": False,
-            "error": detalhe,
-            "status": status_code,
-        }), status_code
-
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+            if resp.status_code == 200:
+                candidatos = dados.get("candidates", [])
+                if candidatos:
+                    partes = candidatos[0].get("content", {}).get("parts", [])
+                    texto = "".join(
+                        p.get("text", "") for p in partes
