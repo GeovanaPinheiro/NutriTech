@@ -1,280 +1,139 @@
-
-from flask import Flask, jsonify, render_template, request, send_from_directory
-from dotenv import load_dotenv
 import os
-import psycopg
-import json
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+import time
+import requests
+from flask import Flask, jsonify, request
 
-load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-app = Flask(__name__)
+# Permite definir o modelo principal via env (ex.: GEMINI_MODEL) e mantém alternativas em sequência
+MODELO_PRINCIPAL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+MODELOS_ALTERNATIVOS = [
+    MODELO_PRINCIPAL,
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+]
+
+# Remove duplicatas mantendo a ordem de prioridade e normaliza o nome sem "models/" para montar a URL
+CANDIDATOS_MODELO = []
+for m in MODELOS_ALTERNATIVOS:
+    if m:
+        nome_limpo = m.replace("models/", "").strip()
+        if nome_limpo and nome_limpo not in CANDIDATOS_MODELO:
+            CANDIDATOS_MODELO.append(nome_limpo)
+
+
+def chamar_gemini_com_fallback(prompt_usuario, system_instruction=None):
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY não configurada no ambiente.")
+
+    erros_por_modelo = []
+    palavras_congestionamento = (
+        "high demand",
+        "overloaded",
+        "unavailable",
+        "resource exhausted",
+        "try again later",
+        "congestion",
+    )
+
+    for modelo in CANDIDATOS_MODELO:
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{modelo}:generateContent?key={GEMINI_API_KEY}"
+        )
+
+        payload = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": prompt_usuario}],
+                }
+            ]
+        }
+
+        if system_instruction:
+            payload["system_instruction"] = {
+                "parts": [{"text": system_instruction}]
+            }
+
+        # Até 2 tentativas rápidas no mesmo modelo caso seja apenas um pico passageiro
+        for tentativa in range(1, 3):
+            try:
+                resp = requests.post(url, json=payload, timeout=20)
+                dados = resp.json() if resp.content else {}
+
+                if resp.status_code == 200:
+                    candidatos = dados.get("candidates", [])
+                    if candidatos:
+                        partes = candidatos[0].get("content", {}).get("parts", [])
+                        texto = "".join(p.get("text", "") for p in partes if "text" in p).strip()
+                        if texto:
+                            return texto, modelo
+
+                msg_erro = (
+                    dados.get("error", {}).get("message")
+                    or resp.text
+                    or f"HTTP {resp.status_code}"
+                )
+                msg_lower = msg_erro.lower()
+
+                eh_sobrecarga = (
+                    resp.status_code in (429, 502, 503, 504)
+                    or any(p in msg_lower for p in palavras_congestionamento)
+                )
+
+                erros_por_modelo.append(f"{modelo} (HTTP {resp.status_code}): {msg_erro}")
+
+                # Se for sobrecarga momentânea, faz 1 retry curto antes de pular para o próximo modelo
+                if eh_sobrecarga and tentativa < 2:
+                    time.sleep(1.2)
+                    continue
+
+                # Se for 404 (modelo indisponível/não encontrado) ou falhou após retry, passa para o próximo modelo
+                break
+
+            except requests.RequestException as exc:
+                erros_por_modelo.append(f"{modelo} (rede/timeout): {str(exc)}")
+                if tentativa < 2:
+                    time.sleep(1.2)
+                    continue
+                break
+
+    raise RuntimeError(" | ".join(erros_por_modelo))
+
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
+    dados = request.get_json(silent=True) or {}
+    mensagem = (dados.get("mensagem") or dados.get("message") or "").strip()
+
+    if not mensagem:
         return jsonify({
-            "text": "O assistente ainda não foi configurado. Defina GEMINI_API_KEY no arquivo .env."
-        }), 503
+            "sucesso": False,
+            "error": "Envie uma mensagem válida para o chatbot."
+        }), 400
 
-    data = request.get_json(silent=True) or {}
-    system_instruction = data.get("systemInstruction")
-    contents = data.get("contents")
-
-    if not isinstance(system_instruction, str) or not system_instruction.strip():
-        return jsonify({"text": "Não foi possível preparar a conversa."}), 400
-
-    if not isinstance(contents, list) or not contents:
-        return jsonify({"text": "Digite sua pergunta para o Max."}), 400
-
-    payload = json.dumps({
-        "systemInstruction": {
-            "parts": [{"text": system_instruction}]
-        },
-        "contents": contents,
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 800
-        }
-    }).encode("utf-8")
-    gemini_request = Request(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "x-goog-api-key": api_key
-        },
-        method="POST"
+    instrucao_sistema = (
+        "Você é o assistente virtual do NutriTech. Responda de forma clara, "
+        "objetiva e prestativa em português."
     )
 
     try:
-        with urlopen(gemini_request, timeout=30) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except HTTPError as error:
-        error_body = error.read().decode("utf-8", errors="replace")
-        try:
-            provider_error = json.loads(error_body).get("error", {}).get("message")
-        except (json.JSONDecodeError, AttributeError):
-            provider_error = None
-
-        print(f"Erro da API Gemini ({error.code}): {error_body}")
+        resposta_texto, modelo_usado = chamar_gemini_com_fallback(
+            mensagem,
+            system_instruction=instrucao_sistema
+        )
         return jsonify({
-            "text": "Não consegui responder no momento. Tente novamente em instantes.",
-            "error": provider_error or "A API Gemini rejeitou a solicitação.",
-            "upstream_status": error.code
-        }), 502
-    except (URLError, TimeoutError) as error:
-        print(f"Falha ao conectar com a API Gemini: {error}")
+            "sucesso": True,
+            "resposta": resposta_texto,
+            "modelo": modelo_usado
+        }), 200
+
+    except Exception as e:
+        detalhe = str(e)
+        status_code = 502 if any(k in detalhe.lower() for k in ("502", "503", "429", "high demand", "overloaded", "timeout")) else 500
         return jsonify({
-            "text": "Não consegui conectar ao assistente. Tente novamente em instantes.",
-            "error": str(error)
-        }), 502
-    except (json.JSONDecodeError, UnicodeDecodeError) as error:
-        print(f"Resposta inválida da API Gemini: {error}")
-        return jsonify({
-            "text": "O assistente retornou uma resposta inválida. Tente novamente.",
-            "error": str(error)
-        }), 502
-
-    text = "".join(
-        part.get("text", "")
-        for candidate in result.get("candidates", [])
-        for part in candidate.get("content", {}).get("parts", [])
-        if isinstance(part, dict)
-    ).strip()
-
-    if not text:
-        return jsonify({
-            "text": "Não consegui montar uma resposta agora. Tente novamente em instantes."
-        }), 502
-
-    return jsonify({"text": text})
-
-@app.route("/estoque")
-def pagina_estoque():
-    return render_template("estoque.html")
-
-@app.route("/")
-def inicio():
-    return send_from_directory(app.root_path, "index.html")
-
-@app.route("/<path:asset>")
-def frontend_asset(asset):
-    public_assets = {"style.css", "chatbot.css", "script.js", "chatbot.js"}
-    if asset not in public_assets and not asset.startswith("images/"):
-        return jsonify({"mensagem": "Arquivo não encontrado."}), 404
-
-    return send_from_directory(app.root_path, asset)
-
-@app.route("/api/status")
-def status():
-    return jsonify({
-        "mensagem": "NutriTech Back End funcionando!",
-        "status": "online"
-    })
-
-@app.route("/api/db-status")
-def db_status():
-    database_url = os.getenv("DATABASE_URL")
-
-    if not database_url:
-        return jsonify({"status": "erro", "mensagem": "DATABASE_URL não encontrada"}), 500
-
-    try:
-        with psycopg.connect(database_url) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT current_database()")
-                nome_banco = cursor.fetchone()[0]
-
-        return jsonify({
-            "status": "conectado",
-            "banco": nome_banco
-        })
-
-    except Exception as erro:
-        print("Erro na conexão:", erro)
-        return jsonify({
-            "status": "erro",
-            "mensagem": "Não foi possível conectar ao banco."
-        }), 500
-
-
-@app.route("/api/produtos")
-def listar_produtos():
-    try:
-        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    SELECT
-                        p.id,
-                        p.nome,
-                        p.categoria,
-                        p.descricao,
-                        p.preco,
-                        COALESCE(e.quantidade, 0) AS estoque
-                    FROM produtos p
-                    LEFT JOIN estoque e ON p.id = e.produto_id
-                    ORDER BY p.id
-                """)
-
-                produtos = cursor.fetchall()
-
-        resultado = []
-
-        for produto in produtos:
-            resultado.append({
-                "id": produto[0],
-                "nome": produto[1],
-                "categoria": produto[2],
-                "descricao": produto[3],
-                "preco": float(produto[4]),
-                "estoque": produto[5]
-            })
-
-        return jsonify(resultado)
-
-    except Exception as erro:
-        print("Erro ao consultar produtos:", erro)
-        return jsonify({
-            "status": "erro",
-            "mensagem": "Não foi possível consultar os produtos."
-        }), 500
-
-
-@app.route("/api/produtos/<int:produto_id>", methods=["PUT"])
-def editar_produto(produto_id):
-    dados = request.get_json()
-
-    if not dados:
-        return jsonify({"mensagem": "Dados não enviados."}), 400
-
-    nome = dados.get("nome")
-    categoria = dados.get("categoria")
-    descricao = dados.get("descricao")
-    preco = dados.get("preco")
-    quantidade = dados.get("quantidade")
-
-    if not nome or not categoria or preco is None or quantidade is None:
-        return jsonify({"mensagem": "Preencha todos os campos obrigatórios."}), 400
-
-    try:
-        preco = float(preco)
-        quantidade = int(quantidade)
-
-        if preco < 0 or quantidade < 0:
-            raise ValueError()
-
-    except (ValueError, TypeError):
-        return jsonify({"mensagem": "Preço ou quantidade inválidos."}), 400
-
-    try:
-        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE produtos
-                    SET nome = %s,
-                        categoria = %s,
-                        descricao = %s,
-                        preco = %s
-                    WHERE id = %s
-                    RETURNING id
-                """, (nome, categoria, descricao, preco, produto_id))
-
-                resultado = cursor.fetchone()
-
-                if not resultado:
-                    return jsonify({"mensagem": "Produto não encontrado."}), 404
-
-                cursor.execute("""
-                    UPDATE estoque
-                    SET quantidade = %s,
-                        ultima_atualizacao = CURRENT_TIMESTAMP
-                    WHERE produto_id = %s
-                """, (quantidade, produto_id))
-
-        return jsonify({"mensagem": "Produto atualizado com sucesso!"})
-
-    except psycopg.errors.UniqueViolation:
-        return jsonify({"mensagem": "Já existe um produto com esse nome."}), 409
-
-    except Exception as erro:
-        print("Erro ao editar produto:", erro)
-        return jsonify({"mensagem": "Não foi possível atualizar o produto."}), 500
-@app.route("/api/produtos/<int:produto_id>", methods=["DELETE"])
-def excluir_produto(produto_id):
-    try:
-        with psycopg.connect(os.getenv("DATABASE_URL")) as conn:
-            with conn.cursor() as cursor:
-
-                cursor.execute("""
-                    DELETE FROM estoque
-                    WHERE produto_id = %s
-                """, (produto_id,))
-
-                cursor.execute("""
-                    DELETE FROM produtos
-                    WHERE id = %s
-                    RETURNING id
-                """, (produto_id,))
-
-                resultado = cursor.fetchone()
-
-                if not resultado:
-                    return jsonify({
-                        "mensagem": "Produto não encontrado."
-                    }), 404
-
-        return jsonify({
-            "mensagem": "Produto excluído com sucesso!"
-        })
-
-    except Exception as erro:
-        print("Erro ao excluir produto:", erro)
-        return jsonify({
-            "mensagem": "Não foi possível excluir o produto."
-        }), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
+            "sucesso": False,
+            "error": detalhe,
+            "status": status_code
+        }), status_code
