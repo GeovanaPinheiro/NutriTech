@@ -53,19 +53,29 @@ def chat():
         with urlopen(gemini_request, timeout=30) as response:
             result = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
-        print(f"Erro da API Gemini ({error.code}): {error.read().decode('utf-8', errors='replace')}")
+        error_body = error.read().decode("utf-8", errors="replace")
+        try:
+            provider_error = json.loads(error_body).get("error", {}).get("message")
+        except (json.JSONDecodeError, AttributeError):
+            provider_error = None
+
+        print(f"Erro da API Gemini ({error.code}): {error_body}")
         return jsonify({
-            "text": "Não consegui responder no momento. Tente novamente em instantes."
+            "text": "Não consegui responder no momento. Tente novamente em instantes.",
+            "error": provider_error or "A API Gemini rejeitou a solicitação.",
+            "upstream_status": error.code
         }), 502
     except (URLError, TimeoutError) as error:
         print(f"Falha ao conectar com a API Gemini: {error}")
         return jsonify({
-            "text": "Não consegui conectar ao assistente. Tente novamente em instantes."
+            "text": "Não consegui conectar ao assistente. Tente novamente em instantes.",
+            "error": str(error)
         }), 502
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         print(f"Resposta inválida da API Gemini: {error}")
         return jsonify({
-            "text": "O assistente retornou uma resposta inválida. Tente novamente."
+            "text": "O assistente retornou uma resposta inválida. Tente novamente.",
+            "error": str(error)
         }), 502
 
     text = "".join(
